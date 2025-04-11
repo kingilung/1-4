@@ -1,0 +1,30 @@
+import ccxt
+import pandas as pd
+import time
+from datetime import datetime
+
+exchange = ccxt.binance()
+
+symbol = 'BTC/USDT'
+timeframe = '1h'
+since = exchange.parse8601('2022-01-01T00:00:00Z')
+all_data = []
+
+while since < exchange.parse8601('2025-04-09T00:00:00Z'):
+    print("Fetching:", datetime.utcfromtimestamp(since / 1000))
+    ohlcv = exchange.fetch_ohlcv(symbol, timeframe=timeframe, since=since, limit=1000)
+    if not ohlcv:
+        break
+    all_data += ohlcv
+    since = ohlcv[-1][0] + 60 * 60 * 1000  # 다음 시간
+
+    time.sleep(1.2)  # Binance 제한 회피
+
+# DataFrame으로 변환
+df = pd.DataFrame(all_data, columns=['timestamp', 'Open', 'High', 'Low', 'Close', 'Volume'])
+df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
+df.set_index('timestamp', inplace=True)
+
+# 저장
+df.to_csv("BTCUSDT_1h.csv")
+print("✅ 저장 완료: BTCUSDT_1h.csv")
