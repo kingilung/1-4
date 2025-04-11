@@ -1,0 +1,51 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# CSV 불러오기
+df = pd.read_csv('너의 파일!!!')
+
+# 문자열 수익을 숫자로 변환 (USDT 제거)
+df['Realized Profit'] = df['Realized Profit'].replace(' USDT', '', regex=True).astype(float)
+df['Amount'] = df['Amount'].astype(float)
+df['Time(UTC)'] = pd.to_datetime(df['Time(UTC)'])
+
+# 거래량
+total_amount = df['Amount'].sum()
+
+# 수익 & 손실
+total_profit = df[df['Realized Profit'] > 0]['Realized Profit'].sum()
+total_loss = df[df['Realized Profit'] < 0]['Realized Profit'].sum()
+
+# 수익 퍼센트
+profit_pct = (total_profit / total_amount) * 100 if total_amount > 0 else 0
+loss_pct = (total_loss / total_amount) * 100 if total_amount > 0 else 0
+
+# 롱/숏 진입 횟수
+long_entries = len(df[(df['Side'] == 'BUY') & ((df['Position Side'] == 'LONG') | (df['Position Side'] == 'BOTH'))])
+short_entries = len(df[(df['Side'] == 'SELL') & ((df['Position Side'] == 'SHORT') | (df['Position Side'] == 'BOTH'))])
+
+# 누적 수익 계산
+df = df.sort_values('Time(UTC)')
+df['Cumulative Profit'] = df['Realized Profit'].cumsum()
+
+# MDD 계산
+cum_max = df['Cumulative Profit'].cummax()
+drawdown = df['Cumulative Profit'] - cum_max
+mdd = drawdown.min()
+
+# 결과 출력
+print(f"총 거래량: {total_amount:.2f} USDT")
+print(f"총 수익: {total_profit:.2f} USDT")
+print(f"총 손실: {total_loss:.2f} USDT")
+print(f"수익 퍼센트: {profit_pct:.2f}%")
+print(f"손실 퍼센트: {loss_pct:.2f}%")
+print(f"최대 낙폭 (MDD): {mdd:.2f} USDT")
+print(f"롱 진입 횟수: {long_entries}")
+print(f"숏 진입 횟수: {short_entries}")
+
+# 누적 수익 그래프
+df.plot(x='Time(UTC)', y='Cumulative Profit', title='누적 수익 추이', figsize=(12, 6))
+plt.xlabel('Time')
+plt.ylabel('Cumulative Profit (USDT)')
+plt.grid(True)
+plt.show()
